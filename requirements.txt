@@ -1,0 +1,13 @@
+fastapi
+uvicorn
+sentence-transformers
+torch
+torchvision
+faiss-cpu
+librosa
+opencv-python-headless
+numpy
+sqlalchemy
+python-multipart
+soundfile
+Pillow

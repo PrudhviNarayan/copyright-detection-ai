@@ -1,0 +1,87 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Copyright Detection System</title>
+    <link rel="stylesheet" href="style.css">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600&display=swap" rel="stylesheet">
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>Multi-Modal Copyright Detection</h1>
+            <p>Check text, images, audio, and video against a database of copyrighted material using AI embeddings.</p>
+        </header>
+
+        <main>
+            <div class="tabs">
+                <button class="tab-btn active" data-target="text">Text</button>
+                <button class="tab-btn" data-target="image">Image</button>
+                <button class="tab-btn" data-target="audio">Audio</button>
+                <button class="tab-btn" data-target="video">Video</button>
+            </div>
+
+            <div class="content">
+                <!-- Text Form -->
+                <div class="tab-content active" id="text">
+                    <textarea id="text-input" rows="6" placeholder="Enter text to check..."></textarea>
+                    <button class="check-btn" onclick="checkCopyright('text')">Check Text</button>
+                </div>
+
+                <!-- Image Form -->
+                <div class="tab-content" id="image">
+                    <input type="file" id="image-upload" accept="image/*" multiple>
+                    <button class="check-btn" onclick="checkCopyright('image')">Check Image(s)</button>
+                </div>
+
+                <!-- Audio Form -->
+                <div class="tab-content" id="audio">
+                    <input type="file" id="audio-upload" accept="audio/*" multiple>
+                    <button class="check-btn" onclick="checkCopyright('audio')">Check Audio(s)</button>
+                </div>
+
+                <!-- Video Form -->
+                <div class="tab-content" id="video">
+                    <input type="file" id="video-upload" accept="video/*" multiple>
+                    <button class="check-btn" onclick="checkCopyright('video')">Check Video(s)</button>
+                </div>
+            </div>
+
+            <div class="controls">
+                <label for="threshold-slider">Risk Threshold: <span id="threshold-val">0.8</span></label>
+                <input type="range" id="threshold-slider" min="0" max="1" step="0.01" value="0.8" oninput="updateThreshold(this.value)">
+            </div>
+
+            <div class="results" id="results-panel" style="display: none;">
+                <h2>Results</h2>
+                <div id="results-content"></div>
+                <div class="chart-container">
+                    <canvas id="similarityChart"></canvas>
+                </div>
+            </div>
+
+            <div class="history">
+                <h2>Recent Checks</h2>
+                <button class="refresh-btn" onclick="fetchHistory()">Refresh History</button>
+                <table id="history-table">
+                    <thead>
+                        <tr>
+                            <th>Time</th>
+                            <th>File/Snippet</th>
+                            <th>Type</th>
+                            <th>Similarity</th>
+                            <th>Match</th>
+                            <th>Risk</th>
+                        </tr>
+                    </thead>
+                    <tbody id="history-body">
+                    </tbody>
+                </table>
+            </div>
+        </main>
+    </div>
+    <script src="script.js"></script>
+</body>
+</html>
