@@ -37,6 +37,12 @@ def startup_event():
 class TextCheckRequest(BaseModel):
     text: str
 
+@app.get("/")
+def root():
+    return {"status": "Backend is running 🚀"}
+
+
+
 def save_upload_file(upload_file: UploadFile) -> str:
     ext = os.path.splitext(upload_file.filename)[1]
     filename = f"{uuid.uuid4()}{ext}"
