@@ -1,0 +1,10 @@
+services:
+  - type: web
+    name: copyright-detection-api
+    env: docker
+    dockerfilePath: ./Dockerfile
+    plan: free
+    healthCheckPath: /docs
+    envVars:
+      - key: PORT
+        value: 10000

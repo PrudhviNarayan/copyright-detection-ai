@@ -1,4 +1,4 @@
-const API_BASE = "http://localhost:8000";
+const API_BASE = "https://your-backend-url.onrender.com";
 let similarityChart = null;
 
 // Tab switching logic
