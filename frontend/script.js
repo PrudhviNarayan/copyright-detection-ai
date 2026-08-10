@@ -1,4 +1,4 @@
-const API_BASE = "https://your-backend-url.onrender.com";
+const API_BASE = "https://copyright-detection-api-production.up.railway.app";
 let similarityChart = null;
 
 // Tab switching logic
