@@ -19,32 +19,39 @@ from .faiss_index.indexer import get_indexer
 
 app = FastAPI(title="Copyright Detection API")
 
+# ✅ CORS (important for frontend)
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # For frontend access
+    allow_origins=["*"],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
 
-# Ensure temp directory exists
+# temp folder
 TEMP_DIR = os.path.join(os.path.dirname(__file__), "temp")
 os.makedirs(TEMP_DIR, exist_ok=True)
 
+
+# ✅ STARTUP
 @app.on_event("startup")
 def startup_event():
     init_db()
-    generate_all() 
+    generate_all()   # create dataset + FAISS index
 
-class TextCheckRequest(BaseModel):
-    text: str
 
+# ✅ ROOT ROUTE
 @app.get("/")
 def root():
     return {"status": "Backend is running 🚀"}
 
 
+# request model
+class TextCheckRequest(BaseModel):
+    text: str
 
+
+# helpers
 def save_upload_file(upload_file: UploadFile) -> str:
     ext = os.path.splitext(upload_file.filename)[1]
     filename = f"{uuid.uuid4()}{ext}"
@@ -53,10 +60,10 @@ def save_upload_file(upload_file: UploadFile) -> str:
         shutil.copyfileobj(upload_file.file, buffer)
     return filepath
 
+
 def determine_risk(score: float, threshold: float) -> str:
-    if score >= threshold:
-        return "HIGH"
-    return "LOW"
+    return "HIGH" if score >= threshold else "LOW"
+
 
 def log_history(db: Session, filename: str, file_type: str, score: float, risk: str, matched_with: str):
     history_entry = CheckHistory(
@@ -69,121 +76,144 @@ def log_history(db: Session, filename: str, file_type: str, score: float, risk: 
     db.add(history_entry)
     db.commit()
 
+
+# ✅ SAFE SEARCH FUNCTION (MAIN FIX)
+def safe_search(indexer, embedding):
+    try:
+        results = indexer.search(embedding, k=1)
+
+        if not results or len(results) == 0:
+            return 0.0, "No match found"
+
+        item = results[0]
+
+        # ensure correct format
+        if isinstance(item, (list, tuple)) and len(item) == 2:
+            meta, score = item
+            filename = meta.get("filename", "Unknown")
+            return float(score), filename
+
+        return 0.0, "Invalid result"
+
+    except Exception as e:
+        print("SEARCH ERROR:", e)
+        return 0.0, "Search failed"
+
+
+# =========================
+# TEXT
+# =========================
 @app.post("/check-text")
 def check_text(request: TextCheckRequest, threshold: float = 0.8, db: Session = Depends(get_db)):
     try:
         embedding = get_text_embedding(request.text)
         indexer = get_indexer("text")
-        
-        results = indexer.search(embedding, k=1)
-        score = 0.0
-        matched_with = "None"
-        
-        if results:
-            meta, score = results[0]
-            matched_with = meta["filename"]
-            
+
+        score, matched_with = safe_search(indexer, embedding)
+
         risk = determine_risk(score, threshold)
-        
-        # We use a snippet of text as the filename for logging
+
         snippet = request.text[:30] + "..." if len(request.text) > 30 else request.text
         log_history(db, snippet, "text", score, risk, matched_with)
-        
+
         return {
             "similarity_score": score,
             "top_match": matched_with,
             "risk_level": risk
         }
+
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
+
+# =========================
+# IMAGE
+# =========================
 @app.post("/check-image")
 def check_image(file: UploadFile = File(...), threshold: float = Form(0.8), db: Session = Depends(get_db)):
     try:
         filepath = save_upload_file(file)
-        pil_img = Image.open(filepath)
-        embedding = get_image_embedding(pil_img)
-        
+        img = Image.open(filepath)
+
+        embedding = get_image_embedding(img)
         indexer = get_indexer("image")
-        results = indexer.search(embedding, k=1)
-        
-        score = 0.0
-        matched_with = "None"
-        if results:
-            meta, score = results[0]
-            matched_with = meta["filename"]
-            
+
+        score, matched_with = safe_search(indexer, embedding)
+
         risk = determine_risk(score, threshold)
         log_history(db, file.filename, "image", score, risk, matched_with)
-        
-        # Clean up
+
         os.remove(filepath)
-        
+
         return {
             "similarity_score": score,
             "top_match": matched_with,
             "risk_level": risk
         }
+
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
+
+# =========================
+# AUDIO
+# =========================
 @app.post("/check-audio")
 def check_audio(file: UploadFile = File(...), threshold: float = Form(0.8), db: Session = Depends(get_db)):
     try:
         filepath = save_upload_file(file)
+
         embedding = get_audio_embedding(filepath)
-        
         indexer = get_indexer("audio")
-        results = indexer.search(embedding, k=1)
-        
-        score = 0.0
-        matched_with = "None"
-        if results:
-            meta, score = results[0]
-            matched_with = meta["filename"]
-            
+
+        score, matched_with = safe_search(indexer, embedding)
+
         risk = determine_risk(score, threshold)
         log_history(db, file.filename, "audio", score, risk, matched_with)
-        
+
         os.remove(filepath)
-        
+
         return {
             "similarity_score": score,
             "top_match": matched_with,
             "risk_level": risk
         }
+
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
+
+# =========================
+# VIDEO
+# =========================
 @app.post("/check-video")
 def check_video(file: UploadFile = File(...), threshold: float = Form(0.8), db: Session = Depends(get_db)):
     try:
         filepath = save_upload_file(file)
+
         embedding = get_video_embedding(filepath)
-        
         indexer = get_indexer("video")
-        results = indexer.search(embedding, k=1)
-        
-        score = 0.0
-        matched_with = "None"
-        if results:
-            meta, score = results[0]
-            matched_with = meta["filename"]
-            
+
+        score, matched_with = safe_search(indexer, embedding)
+
         risk = determine_risk(score, threshold)
         log_history(db, file.filename, "video", score, risk, matched_with)
-        
+
         os.remove(filepath)
-        
+
         return {
             "similarity_score": score,
             "top_match": matched_with,
             "risk_level": risk
         }
+
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
+
+# =========================
+# HISTORY
+# =========================
 @app.get("/history")
 def get_history(limit: int = 50, db: Session = Depends(get_db)):
-    history = db.query(CheckHistory).order_by(CheckHistory.timestamp.desc()).limit(limit).all()
-    return history
+    return db.query(CheckHistory).order_by(CheckHistory.timestamp.desc()).limit(limit).all()
