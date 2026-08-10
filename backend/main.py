@@ -37,7 +37,7 @@ os.makedirs(TEMP_DIR, exist_ok=True)
 @app.on_event("startup")
 def startup_event():
     init_db()
-    generate_all()   # create dataset + FAISS index
+       # create dataset + FAISS index
 
 
 # ✅ ROOT ROUTE
